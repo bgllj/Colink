@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from class_table_backend.parsing.week_expr import WeekParity, WeekParseResult, WeekRange
 from class_table_backend.persistence.tables import (
     CourseRow,
     ImportBatchRow,
@@ -13,7 +14,6 @@ from class_table_backend.persistence.tables import (
     MeetingOccurrenceRow,
     MeetingWeekRow,
 )
-from class_table_backend.parsing.week_expr import WeekParity, WeekParseResult, WeekRange
 
 BATCH_STATUS_UPLOADED = "UPLOADED"
 BATCH_STATUS_PARSED = "PARSED"

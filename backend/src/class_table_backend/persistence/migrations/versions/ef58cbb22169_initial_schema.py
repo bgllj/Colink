@@ -5,17 +5,16 @@ Revises:
 Create Date: 2026-10-09 15:20:45.192180
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'ef58cbb22169'
-down_revision: Union[str, Sequence[str], None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -82,7 +81,12 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['import_row_id'], ['import_row.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_meeting_occurrence_course_id'), 'meeting_occurrence', ['course_id'], unique=False)
+    op.create_index(
+        op.f('ix_meeting_occurrence_course_id'),
+        'meeting_occurrence',
+        ['course_id'],
+        unique=False,
+    )
     op.create_table('meeting_week',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('meeting_id', sa.Integer(), nullable=False),
@@ -90,7 +94,12 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['meeting_id'], ['meeting_occurrence.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_meeting_week_meeting_id'), 'meeting_week', ['meeting_id'], unique=False)
+    op.create_index(
+        op.f('ix_meeting_week_meeting_id'),
+        'meeting_week',
+        ['meeting_id'],
+        unique=False,
+    )
     op.create_index(op.f('ix_meeting_week_week_no'), 'meeting_week', ['week_no'], unique=False)
     # ### end Alembic commands ###
 

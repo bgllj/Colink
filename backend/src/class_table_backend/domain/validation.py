@@ -21,7 +21,11 @@ class ValidationConfig:
 
 
 def _derive_max_week(occurrences: list[ParsedOccurrence]) -> int:
-    week_ends = [week_range.end for occurrence in occurrences for week_range in occurrence.week_ranges]
+    week_ends = [
+        week_range.end
+        for occurrence in occurrences
+        for week_range in occurrence.week_ranges
+    ]
     return max(week_ends) if week_ends else 0
 
 

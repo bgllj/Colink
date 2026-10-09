@@ -10,6 +10,10 @@ from class_table_backend.domain.issues import Issue, IssueCode
 from class_table_backend.domain.models import ParsedOccurrence
 from class_table_backend.domain.validation import ValidationConfig, validate_extraction
 from class_table_backend.import_flow.status import ImportStatus
+from class_table_backend.parsing.profiles.base import ExtractionResult
+from class_table_backend.parsing.profiles.chengdu_wenli_v1 import extract_chengdu_wenli_v1
+from class_table_backend.parsing.week_expr import WeekRange
+from class_table_backend.parsing.workbook import WorkbookReadError, detect_format, read_workbook
 from class_table_backend.persistence.repositories import (
     BATCH_STATUS_FAILED,
     ROW_STATUS_CONFIRMED,
@@ -17,10 +21,6 @@ from class_table_backend.persistence.repositories import (
     ImportRepository,
 )
 from class_table_backend.persistence.tables import ImportRowRow
-from class_table_backend.parsing.profiles.base import ExtractionResult
-from class_table_backend.parsing.profiles.chengdu_wenli_v1 import extract_chengdu_wenli_v1
-from class_table_backend.parsing.week_expr import WeekRange
-from class_table_backend.parsing.workbook import WorkbookReadError, detect_format, read_workbook
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 PROFILE_NAME = "chengdu_wenli_v1"

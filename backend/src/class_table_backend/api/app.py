@@ -5,7 +5,8 @@ from collections.abc import Callable, Iterator
 from fastapi import FastAPI
 from sqlalchemy.orm import Session, sessionmaker
 
-from class_table_backend.api.routes_imports import get_session, router as imports_router
+from class_table_backend.api.routes_imports import get_session
+from class_table_backend.api.routes_imports import router as imports_router
 
 
 def _session_dependency(factory: sessionmaker[Session]) -> Callable[[], Iterator[Session]]:

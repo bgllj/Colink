@@ -7,7 +7,16 @@ from enum import StrEnum
 from class_table_backend.domain.issues import Issue, IssueCode
 from class_table_backend.parsing.normalize import normalize_expression_text
 
-_UNSUPPORTED_PHRASES = ("单双周", "隔周", "前半学期", "后半学期", "按通知", "节假日", "调课", "另行")
+_UNSUPPORTED_PHRASES = (
+    "单双周",
+    "隔周",
+    "前半学期",
+    "后半学期",
+    "按通知",
+    "节假日",
+    "调课",
+    "另行",
+)
 
 _TRAILING_MODIFIER_PATTERN = re.compile(r"(单周|双周|单|双)$")
 _WEEK_SUFFIX_PATTERN = re.compile(r"周$")
