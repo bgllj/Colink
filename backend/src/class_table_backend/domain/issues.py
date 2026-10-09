@@ -1,0 +1,38 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import StrEnum
+from typing import Any
+
+
+class IssueCode(StrEnum):
+    EMPTY_WEEK_EXPRESSION = "EMPTY_WEEK_EXPRESSION"
+    INVALID_WEEK_EXPRESSION = "INVALID_WEEK_EXPRESSION"
+    UNSUPPORTED_WEEK_PHRASE = "UNSUPPORTED_WEEK_PHRASE"
+    REVERSED_WEEK_RANGE = "REVERSED_WEEK_RANGE"
+    INVALID_WEEK_BOUND = "INVALID_WEEK_BOUND"
+    EMPTY_PERIOD_EXPRESSION = "EMPTY_PERIOD_EXPRESSION"
+    INVALID_PERIOD_EXPRESSION = "INVALID_PERIOD_EXPRESSION"
+    REVERSED_PERIOD_RANGE = "REVERSED_PERIOD_RANGE"
+    INVALID_COURSE_LINE = "INVALID_COURSE_LINE"
+    UNRECOGNIZED_LAYOUT = "UNRECOGNIZED_LAYOUT"
+    MISSING_SEMESTER_START = "MISSING_SEMESTER_START"
+    MISSING_MAX_WEEK = "MISSING_MAX_WEEK"
+    WEEK_OUT_OF_RANGE = "WEEK_OUT_OF_RANGE"
+    PERIOD_GRID_MISMATCH = "PERIOD_GRID_MISMATCH"
+    UNSUPPORTED_FILE_TYPE = "UNSUPPORTED_FILE_TYPE"
+    MALFORMED_WORKBOOK = "MALFORMED_WORKBOOK"
+    DUPLICATE_CONFIRM = "DUPLICATE_CONFIRM"
+    IMPORT_NOT_CONFIRMABLE = "IMPORT_NOT_CONFIRMABLE"
+
+
+@dataclass(frozen=True)
+class Issue:
+    code: IssueCode
+    message: str
+    severity: str = "error"
+    sheet: str | None = None
+    coordinate: str | None = None
+    line_index: int | None = None
+    raw_text: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
