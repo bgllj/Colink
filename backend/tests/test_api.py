@@ -129,3 +129,24 @@ def test_confirm_rejects_failed_batch(client: TestClient) -> None:
     assert result["status"] == "FAILED"
     codes = {issue["code"] for issue in result["issues"]}
     assert "IMPORT_NOT_CONFIRMABLE" in codes
+
+
+def test_schedule_readable_after_confirm(client: TestClient) -> None:
+    assert client.get("/schedule").json()["courses"] == []
+
+    import_id = _upload(client).json()["import_id"]
+    confirmed = client.post(f"/imports/{import_id}/confirm")
+    assert confirmed.status_code == 200
+    assert confirmed.json()["rows_confirmed"] > 0
+
+    response = client.get("/schedule")
+    assert response.status_code == 200
+    body = response.json()
+    courses = body["courses"]
+    assert courses
+    meeting = courses[0]["meetings"][0]
+    assert meeting["weekday"] in range(1, 8)
+    assert isinstance(meeting["weeks"], list)
+    assert meeting["weeks"]
+    assert body["semester"]["start_date"] is not None
+    assert body["semester"]["max_week"] is not None

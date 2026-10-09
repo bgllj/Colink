@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from class_table_backend.api.routes_imports import get_session
 from class_table_backend.api.routes_imports import router as imports_router
+from class_table_backend.api.routes_schedule import router as schedule_router
 
 
 def _session_dependency(factory: sessionmaker[Session]) -> Callable[[], Iterator[Session]]:
@@ -32,6 +33,7 @@ def create_app(session_factory: sessionmaker[Session] | None = None) -> FastAPI:
         return {"status": "ok"}
 
     app.include_router(imports_router)
+    app.include_router(schedule_router)
 
     if session_factory is not None:
         app.dependency_overrides[get_session] = _session_dependency(session_factory)

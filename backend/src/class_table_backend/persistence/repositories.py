@@ -177,3 +177,88 @@ class ImportRepository:
 
         for week_no in _expand_week_ranges(row.week_ranges_json):
             self.session.add(MeetingWeekRow(meeting_id=meeting.id, week_no=week_no))
+
+
+class ScheduleRepository:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def load_semester_meta(self) -> dict[str, Any]:
+        batch = self.session.scalars(
+            select(ImportBatchRow)
+            .where(ImportBatchRow.status == BATCH_STATUS_CONFIRMED)
+            .order_by(ImportBatchRow.created_at.desc())
+            .limit(1)
+        ).first()
+        if batch is None:
+            return {
+                "start_date": None,
+                "max_week": None,
+                "academic_year": None,
+                "semester_name": None,
+            }
+        start_date = batch.start_date.isoformat() if batch.start_date else None
+        return {
+            "start_date": start_date,
+            "max_week": batch.max_week,
+            "academic_year": batch.academic_year,
+            "semester_name": batch.semester_name,
+        }
+
+    def load_schedule(self, week: int | None = None) -> list[dict[str, Any]]:
+        course_rows = list(self.session.scalars(select(CourseRow).order_by(CourseRow.id)))
+        if not course_rows:
+            return []
+
+        meetings = list(
+            self.session.scalars(
+                select(MeetingOccurrenceRow)
+                .where(MeetingOccurrenceRow.course_id.in_([c.id for c in course_rows]))
+                .order_by(MeetingOccurrenceRow.id)
+            )
+        )
+
+        weeks_by_meeting: dict[int, list[int]] = {}
+        if meetings:
+            week_rows = self.session.execute(
+                select(MeetingWeekRow.meeting_id, MeetingWeekRow.week_no)
+                .where(MeetingWeekRow.meeting_id.in_([m.id for m in meetings]))
+                .order_by(MeetingWeekRow.meeting_id, MeetingWeekRow.week_no)
+            )
+            for meeting_id, week_no in week_rows:
+                weeks_by_meeting.setdefault(meeting_id, []).append(week_no)
+
+        meetings_by_course: dict[int, list[dict[str, Any]]] = {}
+        for meeting in meetings:
+            weeks = weeks_by_meeting.get(meeting.id, [])
+            if week is not None and week not in weeks:
+                continue
+            meetings_by_course.setdefault(meeting.course_id, []).append(
+                {
+                    "meeting_id": meeting.id,
+                    "weekday": meeting.weekday,
+                    "period_start": meeting.period_start,
+                    "period_end": meeting.period_end,
+                    "week_text": meeting.week_text,
+                    "weeks": weeks,
+                    "room_text": meeting.room_text,
+                    "sheet": meeting.sheet,
+                    "coordinate": meeting.coordinate,
+                    "line_index": meeting.line_index,
+                }
+            )
+
+        schedule: list[dict[str, Any]] = []
+        for course in course_rows:
+            course_meetings = meetings_by_course.get(course.id)
+            if not course_meetings:
+                continue
+            schedule.append(
+                {
+                    "course_id": course.id,
+                    "course_code": course.course_code,
+                    "name": course.name,
+                    "meetings": course_meetings,
+                }
+            )
+        return schedule
