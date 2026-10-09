@@ -16,6 +16,7 @@ dependencies = [
     "xlrd",
     "openpyxl",
     "python-multipart",
+    "pyjwt",
 ]
 
 [project.optional-dependencies]

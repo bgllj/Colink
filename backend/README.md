@@ -21,6 +21,11 @@ python -m venv .venv
 # 配置数据库（PowerShell 语法；SQLite 本地文件示例）
 $env:DATABASE_URL="sqlite:///./class_table.db"
 
+# 配置管理员引导与 JWT（仅管理端需要；见下文「管理员鉴权」）
+$env:ADMIN_BOOTSTRAP_USERNAME="admin"
+$env:ADMIN_BOOTSTRAP_PASSWORD="change-me"
+$env:ADMIN_JWT_SECRET="change-me-too"
+
 # 执行数据库迁移
 .venv/bin/python.exe -m alembic upgrade head
 
@@ -39,14 +44,43 @@ $env:DATABASE_URL="sqlite:///./class_table.db"
 4. 在安卓端「我的」页把服务器地址填为 `http://<电脑局域网IP>:8000`（模拟器才用 `http://10.0.2.2:8000`）。
 5. 若连不上，检查 Windows 防火墙是否放行 TCP 8000（或临时关闭防火墙测试）。
 
+## 管理员鉴权
+
+导入相关接口（`/imports*`）需要管理员 Bearer token；`GET /schedule`、`GET /health`、`POST /auth/login` 保持公开，供学生端使用。
+
+| 环境变量 | 说明 |
+|----------|------|
+| `ADMIN_BOOTSTRAP_USERNAME` | 首次启动时创建的管理员用户名（可选） |
+| `ADMIN_BOOTSTRAP_PASSWORD` | 对应密码（可选；仅在创建时使用，不会覆盖已有用户） |
+| `ADMIN_JWT_SECRET` | JWT HMAC 密钥；未设置时使用开发回退值并告警 |
+| `ADMIN_JWT_TTL_SECONDS` | token 有效期，默认 3600 |
+
+也可显式创建管理员：
+
+```bash
+ADMIN_BOOTSTRAP_USERNAME=admin ADMIN_BOOTSTRAP_PASSWORD=change-me \
+  .venv/bin/python.exe -m class_table_backend.auth.bootstrap
+```
+
+密码哈希为标准库 PBKDF2-HMAC-SHA256（60 万次迭代），不引入 bcrypt。
+
 ## API
 
+### 公开
+
+- `POST /auth/login`：管理员登录。请求体 `{"username","password"}`，返回 `{"access_token","token_type":"bearer"}`；失败统一 `401`。
+- `GET /health`：健康检查。
+- `GET /schedule`：读取已确认课表。返回 `courses` 列表，每个课程含 `course_id`、`course_code`、`name` 与 `meetings`；每次上课安排含 `weekday`（1=周一）、`period_start` / `period_end`、`week_text`（原始周次文本）、`weeks`（展开后的周次列表）、`room_text` 与来源坐标。可选查询参数 `week=N` 只返回该周有课的安排。
+
+### 需要 `Authorization: Bearer <token>`
+
+- `GET /auth/me`：返回当前管理员 `{"id","username"}`。
 - `POST /imports`：上传并解析课表。`multipart` 表单字段 `file`（必填），可选表单字段 `max_week`。返回 `import_id`、解析状态、校验问题列表；若文件哈希与已有导入批次相同，会返回 `duplicate_of` 指向原批次（幂等，不重复入库）。
 - `GET /imports/{import_id}`：获取导入批次预览（元信息、校验问题、解析出的行）。
 - `POST /imports/{import_id}/confirm`：确认导入并写入课表。请求体可选 `{"row_ids": [...]}`（省略表示确认全部可导入行）。
 - `GET /imports/{import_id}/rows?limit=&offset=`：分页读取导入批次的行明细。
-- `GET /schedule`：读取已确认课表。返回 `courses` 列表，每个课程含 `course_id`、`course_code`、`name` 与 `meetings`；每次上课安排含 `weekday`（1=周一）、`period_start` / `period_end`、`week_text`（原始周次文本）、`weeks`（展开后的周次列表）、`room_text` 与来源坐标。可选查询参数 `week=N` 只返回该周有课的安排。
-- `GET /health`：健康检查。
+
+无 token / token 无效或过期 → `401`。
 
 ## 测试
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from class_table_backend.parsing.week_expr import WeekParity, WeekParseResult, WeekRange
 from class_table_backend.persistence.tables import (
+    AdminUserRow,
     CourseRow,
     ImportBatchRow,
     ImportRowRow,
@@ -262,3 +264,26 @@ class ScheduleRepository:
                 }
             )
         return schedule
+
+
+class AdminUserRepository:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def get_by_username(self, username: str) -> AdminUserRow | None:
+        stmt = select(AdminUserRow).where(AdminUserRow.username == username)
+        return self.session.scalars(stmt).first()
+
+    def get_by_id(self, user_id: str) -> AdminUserRow | None:
+        return self.session.get(AdminUserRow, user_id)
+
+    def create(self, *, user_id: str, username: str, password_hash: str) -> AdminUserRow:
+        user = AdminUserRow(
+            id=user_id,
+            username=username,
+            password_hash=password_hash,
+            created_at=datetime.now(UTC),
+        )
+        self.session.add(user)
+        self.session.flush()
+        return user

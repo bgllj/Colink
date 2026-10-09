@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
+from class_table_backend.api.deps import get_session
 from class_table_backend.api.schemas import (
     ConfirmOut,
     ConfirmRequest,
@@ -15,30 +15,16 @@ from class_table_backend.api.schemas import (
     IssueOut,
     RowsPageOut,
 )
+from class_table_backend.auth.dependencies import require_admin
 from class_table_backend.domain.issues import IssueCode
 from class_table_backend.import_flow.service import MAX_UPLOAD_BYTES, ImportService
 from class_table_backend.import_flow.status import ImportStatus
-from class_table_backend.persistence.db import get_session_factory
 
-router = APIRouter(prefix="/imports", tags=["imports"])
-
-_default_session_factory: sessionmaker[Session] | None = None
-
-
-def get_session() -> Iterator[Session]:
-    global _default_session_factory
-    if _default_session_factory is None:
-        _default_session_factory = get_session_factory()
-    session = _default_session_factory()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
+router = APIRouter(
+    prefix="/imports",
+    tags=["imports"],
+    dependencies=[Depends(require_admin)],
+)
 
 SessionDep = Annotated[Session, Depends(get_session)]
 

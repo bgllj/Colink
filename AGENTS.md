@@ -2,18 +2,19 @@
 
 ## Current Goal
 
-Build a class timetable product with two parts:
+Build a class timetable product with three parts:
 
 1. A Python backend for importing class timetable spreadsheets, validating and previewing the parsed schedule, and persisting confirmed data to a database.
-2. An Android client under `frontend/` (Kotlin + Jetpack Compose, "Colink") that is simplified and integrated with the backend import/schedule APIs.
+2. An Android student client under `frontend/user/` (Kotlin + Jetpack Compose, "Colink") that is simplified and integrated with the backend schedule API.
+3. A Web admin console under `frontend/admin/` (Vite + React + TypeScript) for the import review loop (upload → preview → select rows → confirm) and read-only schedule inspection.
 
-Scope note: as of the user's explicit 2026-10-09 decision, Android work is in scope again. The earlier "backend-only / never restore Android" rule is retired. The Android project lives in `frontend/` and is the source of truth for the client; do not resurrect the deleted root-level `app/` tree from git history unless asked.
+Scope note: as of the user's explicit 2026-10-09 decision, Android work is in scope again. The earlier "backend-only / never restore Android" rule is retired. The Android project lives in `frontend/user/` and is the source of truth for the student client; do not resurrect the deleted root-level `app/` tree from git history unless asked. As of the 2026-10-10 admin-console decision, admin login (username/password + JWT) is in scope for protecting `/imports*`; student-side accounts are not.
 
 ## Repository Context
 
-- The backend lives under `backend/`; the Android client lives under `frontend/`.
+- The backend lives under `backend/`; the Android student client lives under `frontend/user/`; the Web admin console lives under `frontend/admin/`.
 - `docs/milestones.md` describes an older Android/product plan. Treat it as historical context where it conflicts with current direction. Do not rewrite it unless asked.
-- Root-level Android/Gradle files remain deleted in the worktree. Leave those deletions in place; the live Android project is `frontend/`.
+- Root-level Android/Gradle files remain deleted in the worktree. Leave those deletions in place; the live Android project is `frontend/user/`.
 - An earlier Excel example was inspected as a legacy `.xls` timetable: a formatted weekday grid with merged cells and multiline course entries. That file is not present in the current checkout. Do not recover deleted files or make tests depend on that original workbook. Use synthetic, anonymized fixtures unless the user supplies a fixture.
 
 ## Scope
@@ -25,7 +26,9 @@ Allowed work when requested:
 - Timetable extraction, normalization, validation, import preview, and confirmation workflows.
 - HTTP API, database models, migrations, repositories, and tests for this import workflow.
 - Backend documentation and local development instructions.
-- Android client work under `frontend/`: simplification, UI, local data, and HTTP integration with the backend import/schedule APIs.
+- Android student client work under `frontend/user/`: simplification, UI, local data, and HTTP integration with the backend schedule API.
+- Web admin console work under `frontend/admin/`: login, import upload/preview/review/confirm UI, read-only schedule view.
+- Admin authentication for the import APIs (username/password, JWT, `admin_user` persistence) when requested as part of the admin console.
 
 Out of scope unless the user explicitly asks:
 
@@ -72,7 +75,8 @@ Out of scope unless the user explicitly asks:
 - Keep parsing independent of HTTP so the parser can be tested and reused from scripts or jobs.
 - For an import API, prefer separate upload/parse, preview, and confirm operations. Return stable import IDs, row IDs, structured issue codes, and source coordinates.
 - Return actionable errors for unsupported file types, malformed workbooks, unrecognized layouts, invalid rows, and ambiguous week rules. Never silently convert parse failures to zero weeks, empty schedules, or successful imports.
-- Apply request/file size limits and safe filename handling. Do not log raw workbook contents or unnecessary student identifiers. If the API is exposed beyond a trusted local environment, require an explicit access-control decision before production use.
+- Apply request/file size limits and safe filename handling. Do not log raw workbook contents or unnecessary student identifiers.
+- Access control (settled 2026-10-10): `/imports*` requires a valid admin Bearer token; `GET /schedule`, `GET /health`, and `POST /auth/login` stay public for the student client. Do not add student-side accounts unless asked. Never put credentials or JWT secrets in the repository.
 
 ## Verification
 

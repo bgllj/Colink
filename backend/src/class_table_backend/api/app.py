@@ -5,9 +5,11 @@ from collections.abc import Callable, Iterator
 from fastapi import FastAPI
 from sqlalchemy.orm import Session, sessionmaker
 
-from class_table_backend.api.routes_imports import get_session
+from class_table_backend.api.deps import get_session
+from class_table_backend.api.routes_auth import router as auth_router
 from class_table_backend.api.routes_imports import router as imports_router
 from class_table_backend.api.routes_schedule import router as schedule_router
+from class_table_backend.auth.bootstrap import bootstrap_from_env
 
 
 def _session_dependency(factory: sessionmaker[Session]) -> Callable[[], Iterator[Session]]:
@@ -32,10 +34,13 @@ def create_app(session_factory: sessionmaker[Session] | None = None) -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    app.include_router(auth_router)
     app.include_router(imports_router)
     app.include_router(schedule_router)
 
     if session_factory is not None:
         app.dependency_overrides[get_session] = _session_dependency(session_factory)
+
+    bootstrap_from_env(session_factory)
 
     return app

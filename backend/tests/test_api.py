@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
-from class_table_backend.api.app import create_app
-from class_table_backend.persistence.db import get_engine, get_session_factory
-from class_table_backend.persistence.tables import Base, MeetingOccurrenceRow
+from class_table_backend.persistence.tables import MeetingOccurrenceRow
 
 SAMPLE_PATH = Path(__file__).resolve().parents[2] / "samples" / "excel" / "25计科9(1).xls"
 
@@ -19,39 +16,27 @@ requires_sample = pytest.mark.skipif(
 )
 
 
-@pytest.fixture
-def session_factory() -> Iterator[sessionmaker[Session]]:
-    engine = get_engine("sqlite://")
-    Base.metadata.create_all(engine)
-    factory = get_session_factory(engine)
-    try:
-        yield factory
-    finally:
-        engine.dispose()
-
-
-@pytest.fixture
-def client(session_factory: sessionmaker[Session]) -> Iterator[TestClient]:
-    app = create_app(session_factory=session_factory)
-    with TestClient(app) as test_client:
-        yield test_client
-
-
 def _sample_bytes() -> bytes:
     return SAMPLE_PATH.read_bytes()
 
 
-def _upload(client: TestClient, data: bytes | None = None, filename: str = "25计科9(1).xls"):
+def _upload(
+    client: TestClient,
+    auth_headers: dict[str, str],
+    data: bytes | None = None,
+    filename: str = "25计科9(1).xls",
+):
     payload = _sample_bytes() if data is None else data
     return client.post(
         "/imports",
         files={"file": (filename, payload, "application/vnd.ms-excel")},
+        headers=auth_headers,
     )
 
 
 @requires_sample
-def test_upload_sample_returns_import_id(client: TestClient) -> None:
-    response = _upload(client)
+def test_upload_sample_returns_import_id(client: TestClient, auth_headers: dict[str, str]) -> None:
+    response = _upload(client, auth_headers)
 
     assert response.status_code == 200
     body = response.json()
@@ -62,10 +47,10 @@ def test_upload_sample_returns_import_id(client: TestClient) -> None:
 
 
 @requires_sample
-def test_preview_returns_rows(client: TestClient) -> None:
-    import_id = _upload(client).json()["import_id"]
+def test_preview_returns_rows(client: TestClient, auth_headers: dict[str, str]) -> None:
+    import_id = _upload(client, auth_headers).json()["import_id"]
 
-    response = client.get(f"/imports/{import_id}")
+    response = client.get(f"/imports/{import_id}", headers=auth_headers)
 
     assert response.status_code == 200
     body = response.json()
@@ -81,10 +66,12 @@ def test_preview_returns_rows(client: TestClient) -> None:
 
 
 @requires_sample
-def test_list_rows_paginates(client: TestClient) -> None:
-    import_id = _upload(client).json()["import_id"]
+def test_list_rows_paginates(client: TestClient, auth_headers: dict[str, str]) -> None:
+    import_id = _upload(client, auth_headers).json()["import_id"]
 
-    response = client.get(f"/imports/{import_id}/rows", params={"limit": 5})
+    response = client.get(
+        f"/imports/{import_id}/rows", params={"limit": 5}, headers=auth_headers
+    )
 
     assert response.status_code == 200
     body = response.json()
@@ -96,11 +83,13 @@ def test_list_rows_paginates(client: TestClient) -> None:
 
 @requires_sample
 def test_confirm_twice_keeps_meeting_count_stable(
-    client: TestClient, session_factory: sessionmaker[Session]
+    client: TestClient,
+    auth_headers: dict[str, str],
+    session_factory: sessionmaker[Session],
 ) -> None:
-    import_id = _upload(client).json()["import_id"]
+    import_id = _upload(client, auth_headers).json()["import_id"]
 
-    first = client.post(f"/imports/{import_id}/confirm")
+    first = client.post(f"/imports/{import_id}/confirm", headers=auth_headers)
     assert first.status_code == 200
     body = first.json()
     assert body["import_id"] == import_id
@@ -111,7 +100,7 @@ def test_confirm_twice_keeps_meeting_count_stable(
         meetings = session.query(MeetingOccurrenceRow).count()
     assert meetings > 0
 
-    second = client.post(f"/imports/{import_id}/confirm")
+    second = client.post(f"/imports/{import_id}/confirm", headers=auth_headers)
     assert second.status_code == 200
     assert second.json()["status"] == "CONFIRMED"
 
@@ -119,20 +108,20 @@ def test_confirm_twice_keeps_meeting_count_stable(
         assert session.query(MeetingOccurrenceRow).count() == meetings
 
 
-def test_unknown_import_returns_404(client: TestClient) -> None:
-    assert client.get("/imports/no-such-import").status_code == 404
-    assert client.get("/imports/no-such-import/rows").status_code == 404
-    assert client.post("/imports/no-such-import/confirm").status_code == 404
+def test_unknown_import_returns_404(client: TestClient, auth_headers: dict[str, str]) -> None:
+    assert client.get("/imports/no-such-import", headers=auth_headers).status_code == 404
+    assert client.get("/imports/no-such-import/rows", headers=auth_headers).status_code == 404
+    assert client.post("/imports/no-such-import/confirm", headers=auth_headers).status_code == 404
 
 
-def test_confirm_rejects_failed_batch(client: TestClient) -> None:
-    response = _upload(client, data=b"not a workbook", filename="notes.txt")
+def test_confirm_rejects_failed_batch(client: TestClient, auth_headers: dict[str, str]) -> None:
+    response = _upload(client, auth_headers, data=b"not a workbook", filename="notes.txt")
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "FAILED"
     import_id = body["import_id"]
 
-    confirm = client.post(f"/imports/{import_id}/confirm")
+    confirm = client.post(f"/imports/{import_id}/confirm", headers=auth_headers)
     assert confirm.status_code == 200
     result = confirm.json()
     assert result["status"] == "FAILED"
@@ -141,11 +130,11 @@ def test_confirm_rejects_failed_batch(client: TestClient) -> None:
 
 
 @requires_sample
-def test_schedule_readable_after_confirm(client: TestClient) -> None:
+def test_schedule_readable_after_confirm(client: TestClient, auth_headers: dict[str, str]) -> None:
     assert client.get("/schedule").json()["courses"] == []
 
-    import_id = _upload(client).json()["import_id"]
-    confirmed = client.post(f"/imports/{import_id}/confirm")
+    import_id = _upload(client, auth_headers).json()["import_id"]
+    confirmed = client.post(f"/imports/{import_id}/confirm", headers=auth_headers)
     assert confirmed.status_code == 200
     assert confirmed.json()["rows_confirmed"] > 0
 

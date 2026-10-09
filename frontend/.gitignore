@@ -1,4 +1,4 @@
-# Android / Gradle
+# Android / Gradle (frontend/user)
 .gradle/
 build/
 */build/
@@ -16,6 +16,11 @@ captures/
 .externalNativeBuild/
 .cxx/
 *.log
+
+# Node (frontend/admin)
+node_modules/
+dist/
+*.tsbuildinfo
 
 # OS files
 .DS_Store
