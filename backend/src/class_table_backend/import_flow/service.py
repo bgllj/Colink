@@ -29,8 +29,6 @@ ROW_STATUS_PARSED = "PARSED"
 ROW_STATUS_NEEDS_REVIEW = "NEEDS_REVIEW"
 ROW_STATUS_INVALID = "INVALID"
 
-_ISSUE_FILE_TOO_LARGE = "FILE_TOO_LARGE"
-
 
 def _issue_dict(
     *,
@@ -167,7 +165,7 @@ class ImportService:
 
         if len(data) > MAX_UPLOAD_BYTES:
             issue = _issue_dict(
-                code=_ISSUE_FILE_TOO_LARGE,
+                code=str(IssueCode.FILE_TOO_LARGE),
                 message=f"上传文件超过大小限制 {MAX_UPLOAD_BYTES} 字节",
             )
             batch = self.repo.create_batch(
@@ -414,6 +412,7 @@ class ImportService:
         ).all()
         return {
             "import_id": batch.id,
+            "status": batch.status,
             "total": int(total or 0),
             "limit": limit,
             "offset": offset,
