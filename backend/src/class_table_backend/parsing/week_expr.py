@@ -7,7 +7,7 @@ from enum import StrEnum
 from class_table_backend.domain.issues import Issue, IssueCode
 from class_table_backend.parsing.normalize import normalize_expression_text
 
-_UNSUPPORTED_PHRASES = ("隔周", "前半学期", "后半学期", "按通知", "节假日", "调课", "另行")
+_UNSUPPORTED_PHRASES = ("单双周", "隔周", "前半学期", "后半学期", "按通知", "节假日", "调课", "另行")
 
 _TRAILING_MODIFIER_PATTERN = re.compile(r"(单周|双周|单|双)$")
 _WEEK_SUFFIX_PATTERN = re.compile(r"周$")
@@ -38,7 +38,7 @@ class WeekParseResult:
         return not any(issue.severity == "error" for issue in self.issues)
 
     def expanded_weeks(self) -> list[int]:
-        weeks: list[int] = []
+        weeks: set[int] = set()
         for week_range in self.ranges:
             step = 1
             if week_range.parity is WeekParity.ODD:
@@ -50,14 +50,11 @@ class WeekParseResult:
             else:
                 start = week_range.start
             for week in range(start, week_range.end + 1, step):
-                if week not in weeks:
-                    weeks.append(week)
-        return weeks
+                weeks.add(week)
+        return sorted(weeks)
 
 
-def _parse_segment(segment: str) -> WeekRange | Issue | None:
-    if not segment:
-        return None
+def _parse_segment(segment: str) -> WeekRange | Issue:
     match = _SEGMENT_PATTERN.fullmatch(segment)
     if match is None:
         return Issue(
@@ -156,7 +153,7 @@ def parse_week_expression(text: str) -> WeekParseResult:
         parsed = _parse_segment(segment)
         if isinstance(parsed, Issue):
             issues.append(parsed)
-        elif parsed is not None:
+        else:
             ranges.append(WeekRange(start=parsed.start, end=parsed.end, parity=parity))
 
     if not ranges and not issues:
@@ -171,4 +168,14 @@ def parse_week_expression(text: str) -> WeekParseResult:
             ],
         )
 
-    return WeekParseResult(original_text=original_text, ranges=ranges, issues=issues)
+    result = WeekParseResult(original_text=original_text, ranges=ranges, issues=issues)
+    if result.ok and not result.expanded_weeks():
+        result.issues.append(
+            Issue(
+                code=IssueCode.EMPTY_WEEK_EXPANSION,
+                message="周次表达式展开后为空",
+                severity="warning",
+                raw_text=original_text,
+            )
+        )
+    return result

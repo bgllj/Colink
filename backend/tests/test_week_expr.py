@@ -124,3 +124,36 @@ def test_empty_segment_is_error() -> None:
     result = parse_week_expression("1,,3周")
     assert not result.ok
     assert any(issue.code is IssueCode.EMPTY_WEEK_EXPRESSION for issue in result.issues)
+
+
+def test_empty_expansion_warning() -> None:
+    result = parse_week_expression("3双周")
+    assert result.ok
+    assert result.expanded_weeks() == []
+    assert any(
+        issue.code is IssueCode.EMPTY_WEEK_EXPANSION and issue.severity == "warning"
+        for issue in result.issues
+    )
+    result_odd = parse_week_expression("2单周")
+    assert result_odd.ok
+    assert result_odd.expanded_weeks() == []
+    assert any(
+        issue.code is IssueCode.EMPTY_WEEK_EXPANSION and issue.severity == "warning"
+        for issue in result_odd.issues
+    )
+
+
+def test_dan_shuang_zhou_unsupported() -> None:
+    for text in ("1-16单双周", "单双周"):
+        result = parse_week_expression(text)
+        assert not result.ok
+        assert any(
+            issue.code is IssueCode.UNSUPPORTED_WEEK_PHRASE and issue.raw_text == text
+            for issue in result.issues
+        )
+
+
+def test_expanded_weeks_sorted_unique() -> None:
+    result = parse_week_expression("5-6,1-3")
+    assert result.ok
+    assert result.expanded_weeks() == [1, 2, 3, 5, 6]
