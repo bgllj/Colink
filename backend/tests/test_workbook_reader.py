@@ -12,9 +12,15 @@ from class_table_backend.parsing.workbook import (
     read_workbook,
 )
 
-SAMPLE_PATH = Path(__file__).resolve().parents[2] / "excel样例" / "25计科9(1).xls"
+SAMPLE_PATH = Path(__file__).resolve().parents[2] / "samples" / "excel" / "25计科9(1).xls"
+
+requires_sample = pytest.mark.skipif(
+    not SAMPLE_PATH.is_file(),
+    reason="本地样例课表未提供（samples/excel 不入库）",
+)
 
 
+@requires_sample
 def test_detect_xls_magic_on_sample() -> None:
     data = SAMPLE_PATH.read_bytes()
     assert detect_format(data) == "xls"
@@ -26,6 +32,7 @@ def test_detect_xlsx_and_unknown_magic() -> None:
     assert detect_format(b"") is None
 
 
+@requires_sample
 def test_read_sample_has_sheet1_and_title_at_row0() -> None:
     workbook = read_workbook(SAMPLE_PATH.read_bytes())
     assert "Sheet1" in workbook.sheets

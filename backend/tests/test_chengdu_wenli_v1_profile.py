@@ -1,11 +1,18 @@
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from class_table_backend.domain.issues import IssueCode
 from class_table_backend.parsing.profiles.chengdu_wenli_v1 import extract_chengdu_wenli_v1
 from class_table_backend.parsing.workbook import WorkbookData, read_workbook
 
-SAMPLE_PATH = Path(__file__).resolve().parents[2] / "excel样例" / "25计科9(1).xls"
+SAMPLE_PATH = Path(__file__).resolve().parents[2] / "samples" / "excel" / "25计科9(1).xls"
+
+requires_sample = pytest.mark.skipif(
+    not SAMPLE_PATH.is_file(),
+    reason="本地样例课表未提供（samples/excel 不入库）",
+)
 
 
 def _extract():
@@ -13,6 +20,7 @@ def _extract():
     return extract_chengdu_wenli_v1(workbook)
 
 
+@requires_sample
 def test_metadata_from_sample() -> None:
     result = _extract()
     meta = result.meta
@@ -26,6 +34,7 @@ def test_metadata_from_sample() -> None:
     assert meta.major == "计算机科学与技术"
 
 
+@requires_sample
 def test_occurrences_pe_course_and_provenance() -> None:
     result = _extract()
     assert result.occurrences
@@ -43,6 +52,7 @@ def test_occurrences_pe_course_and_provenance() -> None:
     assert sport.ok
 
 
+@requires_sample
 def test_multi_room_course_has_three_rooms() -> None:
     result = _extract()
     finance = [o for o in result.occurrences if o.course_code == "FX3001004"]
@@ -57,6 +67,7 @@ def test_multi_room_course_has_three_rooms() -> None:
         assert occ.period_end == 7
 
 
+@requires_sample
 def test_history_week_expansion() -> None:
     result = _extract()
     history = [

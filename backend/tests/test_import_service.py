@@ -15,7 +15,12 @@ from class_table_backend.persistence.tables import (
     MeetingWeekRow,
 )
 
-SAMPLE_PATH = Path(__file__).resolve().parents[2] / "excel样例" / "25计科9(1).xls"
+SAMPLE_PATH = Path(__file__).resolve().parents[2] / "samples" / "excel" / "25计科9(1).xls"
+
+requires_sample = pytest.mark.skipif(
+    not SAMPLE_PATH.is_file(),
+    reason="本地样例课表未提供（samples/excel 不入库）",
+)
 
 
 @pytest.fixture
@@ -39,6 +44,7 @@ def _counts(session: Session) -> tuple[int, int]:
     return session.query(CourseRow).count(), session.query(MeetingOccurrenceRow).count()
 
 
+@requires_sample
 def test_ingest_sample_and_preview_does_not_write_schedule(session: Session) -> None:
     service = ImportService(session)
     result = service.ingest("25计科9(1).xls", _sample_bytes())
@@ -65,6 +71,7 @@ def test_ingest_sample_and_preview_does_not_write_schedule(session: Session) -> 
     assert meetings == 0
 
 
+@requires_sample
 def test_confirm_writes_rows_once(session: Session) -> None:
     service = ImportService(session)
     result = service.ingest("25计科9(1).xls", _sample_bytes())
@@ -87,6 +94,7 @@ def test_confirm_writes_rows_once(session: Session) -> None:
     assert meetings_after == meetings
 
 
+@requires_sample
 def test_duplicate_ingest_returns_existing_import(session: Session) -> None:
     service = ImportService(session)
     data = _sample_bytes()
@@ -118,6 +126,7 @@ def test_ingest_rejects_unsupported_file_type(session: Session) -> None:
     assert "UNSUPPORTED_FILE_TYPE" in codes
 
 
+@requires_sample
 def test_max_week_override(session: Session) -> None:
     service = ImportService(session)
     result = service.ingest("25计科9(1).xls", _sample_bytes(), max_week=5)
@@ -125,6 +134,7 @@ def test_max_week_override(session: Session) -> None:
     assert result["status"] == ImportStatus.NEEDS_REVIEW
 
 
+@requires_sample
 def test_list_rows_paginates(session: Session) -> None:
     service = ImportService(session)
     result = service.ingest("25计科9(1).xls", _sample_bytes())

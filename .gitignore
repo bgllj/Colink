@@ -1,22 +1,42 @@
-# Android / Gradle
-.gradle/
+# Python
+.venv/
+.venv-ss/
+.venv-tmp/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
 build/
-*/build/
-local.properties
 
-# Android Studio / IntelliJ
+# Local data & logs
+*.db
+uvicorn.log
+uvicorn.err
+
+# Android / Gradle / IDE
+.gradle/
 .idea/
+.kotlin/
+**/build/
+local.properties
 *.iml
 *.ipr
 *.iws
-
-# Generated / local files
-.kotlin/
 captures/
 .externalNativeBuild/
 .cxx/
-*.log
 
-# OS files
+# Generated output
+output/
+
+# Project tooling
+.mimocode/
+
+# Local sample data (do not publish)
+samples/
+
+# OS
 .DS_Store
 Thumbs.db

@@ -11,7 +11,12 @@ from class_table_backend.api.app import create_app
 from class_table_backend.persistence.db import get_engine, get_session_factory
 from class_table_backend.persistence.tables import Base, MeetingOccurrenceRow
 
-SAMPLE_PATH = Path(__file__).resolve().parents[2] / "excel样例" / "25计科9(1).xls"
+SAMPLE_PATH = Path(__file__).resolve().parents[2] / "samples" / "excel" / "25计科9(1).xls"
+
+requires_sample = pytest.mark.skipif(
+    not SAMPLE_PATH.is_file(),
+    reason="本地样例课表未提供（samples/excel 不入库）",
+)
 
 
 @pytest.fixture
@@ -44,6 +49,7 @@ def _upload(client: TestClient, data: bytes | None = None, filename: str = "25�
     )
 
 
+@requires_sample
 def test_upload_sample_returns_import_id(client: TestClient) -> None:
     response = _upload(client)
 
@@ -55,6 +61,7 @@ def test_upload_sample_returns_import_id(client: TestClient) -> None:
     assert body["duplicate_of"] is None
 
 
+@requires_sample
 def test_preview_returns_rows(client: TestClient) -> None:
     import_id = _upload(client).json()["import_id"]
 
@@ -73,6 +80,7 @@ def test_preview_returns_rows(client: TestClient) -> None:
     assert isinstance(first["issues"], list)
 
 
+@requires_sample
 def test_list_rows_paginates(client: TestClient) -> None:
     import_id = _upload(client).json()["import_id"]
 
@@ -86,6 +94,7 @@ def test_list_rows_paginates(client: TestClient) -> None:
     assert 1 <= len(body["rows"]) <= 5
 
 
+@requires_sample
 def test_confirm_twice_keeps_meeting_count_stable(
     client: TestClient, session_factory: sessionmaker[Session]
 ) -> None:
@@ -131,6 +140,7 @@ def test_confirm_rejects_failed_batch(client: TestClient) -> None:
     assert "IMPORT_NOT_CONFIRMABLE" in codes
 
 
+@requires_sample
 def test_schedule_readable_after_confirm(client: TestClient) -> None:
     assert client.get("/schedule").json()["courses"] == []
 
