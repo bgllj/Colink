@@ -30,6 +30,9 @@ local.properties
 captures/
 .externalNativeBuild/
 .cxx/
+*.jks
+*.keystore
+keystore.properties
 
 # Generated output
 output/
