@@ -46,7 +46,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.colink.app.UserProfile
-import com.colink.app.data.BackendConfig
 import com.colink.app.ui.theme.Green
 import com.colink.app.ui.theme.Moss
 import com.colink.app.ui.theme.PaperLight
@@ -60,8 +59,6 @@ fun ProfileScreen(
     profile: UserProfile,
     semesterStart: LocalDate,
     onSemesterStartChange: (LocalDate) -> Unit,
-    backendBaseUrl: String,
-    onBackendBaseUrlChange: (String) -> Unit,
     onSave: (UserProfile) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -96,12 +93,6 @@ fun ProfileScreen(
                     ProfileSummary(profile, semesterStart, onEdit = { editing = true }, onEditSemesterStart = { editingSemesterStart = true })
                 }
             }
-        }
-        item {
-            ServerSettings(
-                backendBaseUrl = backendBaseUrl,
-                onBackendBaseUrlChange = onBackendBaseUrlChange,
-            )
         }
     }
     if (editingSemesterStart) {
@@ -170,44 +161,6 @@ private fun SummaryRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, modifier = Modifier.weight(.32f), style = MaterialTheme.typography.labelLarge, color = Moss)
         Text(value, modifier = Modifier.weight(.68f), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-private fun ServerSettings(backendBaseUrl: String, onBackendBaseUrlChange: (String) -> Unit) {
-    var draft by remember(backendBaseUrl) { mutableStateOf(backendBaseUrl) }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("课表数据源", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = PaperLight), modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    label = { Text("后端服务器地址") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    "模拟器默认 ${BackendConfig.DEFAULT_BASE_URL}；真机请填写后端的局域网地址",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Moss,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(
-                        onClick = { draft = BackendConfig.DEFAULT_BASE_URL },
-                        modifier = Modifier.weight(1f),
-                    ) { Text("恢复默认") }
-                    Button(
-                        onClick = {
-                            val trimmed = draft.trim().trimEnd('/')
-                            val normalized = if (trimmed.contains("://") || trimmed.isEmpty()) trimmed else "http://$trimmed"
-                            onBackendBaseUrlChange(normalized)
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) { Text("保存并重新加载") }
-                }
-            }
-        }
     }
 }
 

@@ -74,18 +74,17 @@ fun ColinkApp() {
                 }.getOrDefault(defaultSemesterStart),
             )
         }
-        var backendBaseUrl by remember {
-            mutableStateOf(preferences.getString("backendBaseUrl", BackendConfig.DEFAULT_BASE_URL) ?: BackendConfig.DEFAULT_BASE_URL)
+        val courseDataSource = remember {
+            RemoteCourseDataSource(baseUrlProvider = { BackendConfig.DEFAULT_BASE_URL })
         }
         var selectedClassId by remember {
             mutableStateOf(preferences.getString("selectedClassId", null))
         }
         var classList by remember { mutableStateOf<List<ClassInfo>>(emptyList()) }
-        val courseDataSource = remember { RemoteCourseDataSource(baseUrlProvider = { backendBaseUrl }) }
         var courseLoadState by remember { mutableStateOf<CourseLoadState>(CourseLoadState.Loading) }
         var refreshTick by remember { mutableIntStateOf(0) }
 
-        LaunchedEffect(backendBaseUrl, refreshTick) {
+        LaunchedEffect(refreshTick) {
             courseDataSource.fetchClasses().fold(
                 onSuccess = { list ->
                     classList = list
@@ -102,7 +101,7 @@ fun ColinkApp() {
             )
         }
 
-        LaunchedEffect(backendBaseUrl, selectedClassId, refreshTick) {
+        LaunchedEffect(selectedClassId, refreshTick) {
             val classId = selectedClassId
             if (classId == null) {
                 courseLoadState = CourseLoadState.NoClassSelected
@@ -160,12 +159,6 @@ fun ColinkApp() {
                         preferences.edit().putString("semesterStart", date.toString()).apply()
                     },
                     maxWeek = (courseLoadState as? CourseLoadState.Ready)?.semester?.maxWeek ?: 32,
-                    backendBaseUrl = backendBaseUrl,
-                    onBackendBaseUrlChange = { url ->
-                        backendBaseUrl = url
-                        preferences.edit().putString("backendBaseUrl", url).apply()
-                        refreshTick += 1
-                    },
                     classList = classList,
                     selectedClassId = selectedClassId,
                     onSelectClass = { classId ->
@@ -245,8 +238,6 @@ private fun AppContent(
     semesterStart: LocalDate,
     onSemesterStartChange: (LocalDate) -> Unit,
     maxWeek: Int,
-    backendBaseUrl: String,
-    onBackendBaseUrlChange: (String) -> Unit,
     classList: List<ClassInfo>,
     selectedClassId: String?,
     onSelectClass: (String) -> Unit,
@@ -274,8 +265,6 @@ private fun AppContent(
             profile = profile,
             semesterStart = semesterStart,
             onSemesterStartChange = onSemesterStartChange,
-            backendBaseUrl = backendBaseUrl,
-            onBackendBaseUrlChange = onBackendBaseUrlChange,
             onSave = onSaveProfile,
             modifier = Modifier.padding(padding),
         )

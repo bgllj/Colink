@@ -13,8 +13,8 @@ import org.json.JSONException
 import org.json.JSONObject
 
 object BackendConfig {
-    /** Emulator reaches the host machine loopback through this address. */
-    const val DEFAULT_BASE_URL = "http://10.0.2.2:8000"
+    /** Production backend reached through the public reverse proxy on port 80. */
+    const val DEFAULT_BASE_URL = "http://154.219.97.17/api"
 }
 
 /** Raised for failures whose message is already a user-facing Chinese sentence. */
