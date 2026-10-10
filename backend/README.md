@@ -88,6 +88,7 @@ ADMIN_BOOTSTRAP_USERNAME=admin ADMIN_BOOTSTRAP_PASSWORD=change-me \
 - `GET /auth/me`：返回当前管理员 `{"id","username"}`。
 - `GET /classes` / `POST /classes`：班级列表 / 新建（重名 → `409`）。
 - `PATCH /classes/{class_id}`：改名等；`DELETE /classes/{class_id}`：删除班级（级联删除该班课表与导入批次）。
+- `PATCH /classes/{class_id}/semester`：修改开学日期。请求体 `{"start_date": "YYYY-MM-DD"}`（显式 `null` 表示清空）。写入该班最近一次已确认导入批次的 `start_date`，返回更新后的 `semester` 元信息。班级不存在 → `404`；尚无已确认课表 → `404`。
 - `POST /imports`：上传并解析课表。`multipart` 表单字段 `file`（必填），可选 `max_week`、`class_id`、`class_name`。返回 `import_id`、解析状态、校验问题列表；若文件哈希与已有导入批次相同，会返回 `duplicate_of` 指向原批次（幂等，不重复入库）。
 - `GET /imports/{import_id}`：获取导入批次预览（元信息、校验问题、解析出的行）。
 - `POST /imports/{import_id}/confirm`：确认导入并写入该班课表。请求体：`row_ids?`（省略表示确认全部可导入行）、`class_id?` / `class_name?`（目标班级；可自动建班）、`replace?`（默认 `false`）。目标班级已有确认课表且未 `replace` → `409`（`SCHEDULE_EXISTS`）；`replace=true` 在同一事务内整表替换。

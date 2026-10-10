@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import delete, select
@@ -357,15 +357,7 @@ class ScheduleRepository:
         self.session = session
 
     def load_semester_meta(self, class_id: str) -> dict[str, Any]:
-        batch = self.session.scalars(
-            select(ImportBatchRow)
-            .where(
-                ImportBatchRow.status == BATCH_STATUS_CONFIRMED,
-                ImportBatchRow.class_id == class_id,
-            )
-            .order_by(ImportBatchRow.created_at.desc())
-            .limit(1)
-        ).first()
+        batch = self._latest_confirmed_batch(class_id)
         if batch is None:
             return {
                 "start_date": None,
@@ -380,6 +372,31 @@ class ScheduleRepository:
             "academic_year": batch.academic_year,
             "semester_name": batch.semester_name,
         }
+
+    def _latest_confirmed_batch(self, class_id: str) -> ImportBatchRow | None:
+        return self.session.scalars(
+            select(ImportBatchRow)
+            .where(
+                ImportBatchRow.status == BATCH_STATUS_CONFIRMED,
+                ImportBatchRow.class_id == class_id,
+            )
+            .order_by(ImportBatchRow.created_at.desc())
+            .limit(1)
+        ).first()
+
+    def update_start_date(
+        self, class_id: str, start_date: date | None
+    ) -> dict[str, Any]:
+        """Update the semester start date on the class's confirmed import batch."""
+        batch = self._latest_confirmed_batch(class_id)
+        if batch is None:
+            raise ImportConfirmError(
+                "SCHEDULE_NOT_FOUND",
+                f"班级尚无已确认课表，无法修改开学日期: {class_id}",
+            )
+        batch.start_date = start_date
+        self.session.flush()
+        return self.load_semester_meta(class_id)
 
     def load_schedule(self, class_id: str, week: int | None = None) -> list[dict[str, Any]]:
         course_rows = list(

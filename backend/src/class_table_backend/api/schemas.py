@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -99,6 +100,12 @@ class ScheduleSemesterOut(BaseModel):
     max_week: int | None = None
     academic_year: str | None = None
     semester_name: str | None = None
+
+
+class SemesterUpdateIn(BaseModel):
+    """开学日期修改；显式传 ``null`` 表示清空。"""
+
+    start_date: date | None
 
 
 class ScheduleOut(BaseModel):

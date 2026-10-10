@@ -8,6 +8,7 @@ import {
   login,
   setToken,
   setUnauthorizedListener,
+  updateClassSemester,
 } from "../api/client";
 
 function mockFetchOnce(status: number, body: unknown) {
@@ -112,6 +113,48 @@ describe("api client requests", () => {
       row_ids: ["r1", "r2"],
       class_id: "c1",
       replace: true,
+    });
+  });
+
+  it("updateClassSemester patches start_date", async () => {
+    setToken("tok-5");
+    const fetchMock = mockFetchOnce(200, {
+      start_date: "2026-09-07",
+      max_week: 17,
+      academic_year: "2026-2027",
+      semester_name: "第一学期",
+    });
+    const result = await updateClassSemester("c1", { start_date: "2026-09-07" });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/classes/c1/semester");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(String(init.body))).toEqual({ start_date: "2026-09-07" });
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok-5");
+    expect(result.start_date).toBe("2026-09-07");
+  });
+
+  it("updateClassSemester can clear start_date", async () => {
+    setToken("tok-6");
+    const fetchMock = mockFetchOnce(200, {
+      start_date: null,
+      max_week: 17,
+      academic_year: null,
+      semester_name: null,
+    });
+    const result = await updateClassSemester("c1", { start_date: null });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({ start_date: null });
+    expect(result.start_date).toBeNull();
+  });
+
+  it("updateClassSemester surfaces api error", async () => {
+    setToken("tok-7");
+    mockFetchOnce(404, { detail: "班级尚无已确认课表，无法修改开学日期: c1" });
+    await expect(
+      updateClassSemester("c1", { start_date: "2026-09-07" }),
+    ).rejects.toMatchObject({
+      status: 404,
+      message: "班级尚无已确认课表，无法修改开学日期: c1",
     });
   });
 });

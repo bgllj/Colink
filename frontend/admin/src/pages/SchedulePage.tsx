@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ApiError, fetchClasses, fetchClassSchedule } from "../api/client";
+import {
+  ApiError,
+  fetchClasses,
+  fetchClassSchedule,
+  updateClassSemester,
+} from "../api/client";
 import type { ClassOut, ScheduleOut } from "../api/types";
 
 const WEEKDAYS = ["", "周一", "周二", "周三", "周四", "周五", "周六", "周日"];
@@ -13,6 +18,12 @@ export function SchedulePage() {
   const [week, setWeek] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [editingStartDate, setEditingStartDate] = useState(false);
+  const [startDateDraft, setStartDateDraft] = useState("");
+  const [startDateError, setStartDateError] = useState<string | null>(null);
+  const [startDateSaving, setStartDateSaving] = useState(false);
+  const classIdRef = useRef(classId);
+  classIdRef.current = classId;
 
   useEffect(() => {
     fetchClasses()
@@ -61,6 +72,8 @@ export function SchedulePage() {
 
   function onSelectClass(next: string) {
     setClassId(next);
+    setEditingStartDate(false);
+    setStartDateError(null);
     const params = new URLSearchParams(searchParams);
     if (next) {
       params.set("class_id", next);
@@ -70,6 +83,49 @@ export function SchedulePage() {
     setSearchParams(params);
   }
 
+  function onStartEdit() {
+    setStartDateDraft(schedule?.semester.start_date ?? "");
+    setStartDateError(null);
+    setEditingStartDate(true);
+  }
+
+  function onStartCancel() {
+    setEditingStartDate(false);
+    setStartDateError(null);
+    setStartDateDraft("");
+  }
+
+  async function onStartSave() {
+    const targetClassId = classId;
+    if (!targetClassId) return;
+    const value = startDateDraft.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      setStartDateError("请选择有效日期（YYYY-MM-DD）");
+      return;
+    }
+    setStartDateSaving(true);
+    setStartDateError(null);
+    try {
+      const semester = await updateClassSemester(targetClassId, {
+        start_date: value,
+      });
+      if (classIdRef.current !== targetClassId) return;
+      setSchedule((prev) =>
+        prev ? { ...prev, semester } : prev,
+      );
+      setEditingStartDate(false);
+    } catch (err) {
+      if (classIdRef.current !== targetClassId) return;
+      setStartDateError(
+        err instanceof ApiError ? err.message : "保存开学日期失败",
+      );
+    } finally {
+      if (classIdRef.current === targetClassId) {
+        setStartDateSaving(false);
+      }
+    }
+  }
+
   return (
     <div className="stack">
       <section className="card stack">
@@ -77,7 +133,11 @@ export function SchedulePage() {
         <div className="row">
           <label>
             班级
-            <select value={classId} onChange={(e) => onSelectClass(e.target.value)}>
+            <select
+              value={classId}
+              disabled={startDateSaving}
+              onChange={(e) => onSelectClass(e.target.value)}
+            >
               <option value="">— 选择班级 —</option>
               {classes.map((cls) => (
                 <option key={cls.id} value={cls.id}>
@@ -92,6 +152,7 @@ export function SchedulePage() {
               type="number"
               min={1}
               value={week}
+              disabled={startDateSaving}
               onChange={(e) => setWeek(e.target.value)}
               placeholder="留空显示全部"
             />
@@ -114,7 +175,42 @@ export function SchedulePage() {
             </div>
             <div>
               <dt>开学日期</dt>
-              <dd>{schedule.semester.start_date ?? "—"}</dd>
+              <dd>
+                {editingStartDate ? (
+                  <span className="row">
+                    <input
+                      type="date"
+                      value={startDateDraft}
+                      onChange={(e) => setStartDateDraft(e.target.value)}
+                      aria-label="开学日期"
+                    />
+                    <button
+                      type="button"
+                      onClick={onStartSave}
+                      disabled={startDateSaving}
+                    >
+                      {startDateSaving ? "保存中…" : "保存"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onStartCancel}
+                      disabled={startDateSaving}
+                    >
+                      取消
+                    </button>
+                  </span>
+                ) : (
+                  <span className="row">
+                    <span>{schedule.semester.start_date ?? "—"}</span>
+                    <button type="button" onClick={onStartEdit}>
+                      修改
+                    </button>
+                  </span>
+                )}
+                {startDateError ? (
+                  <div className="error">{startDateError}</div>
+                ) : null}
+              </dd>
             </div>
             <div>
               <dt>最大周次</dt>

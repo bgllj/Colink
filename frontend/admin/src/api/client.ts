@@ -7,6 +7,7 @@ import type {
   ImportPreviewOut,
   LoginResponse,
   ScheduleOut,
+  ScheduleSemesterOut,
 } from "./types";
 
 const TOKEN_KEY = "colink_admin_token";
@@ -177,5 +178,15 @@ export function fetchClassSchedule(
   const query = week != null ? `?week=${week}` : "";
   return request<ScheduleOut>(
     `/classes/${encodeURIComponent(classId)}/schedule${query}`,
+  );
+}
+
+export function updateClassSemester(
+  classId: string,
+  body: { start_date: string | null },
+): Promise<ScheduleSemesterOut> {
+  return request<ScheduleSemesterOut>(
+    `/classes/${encodeURIComponent(classId)}/semester`,
+    { method: "PATCH", body },
   );
 }

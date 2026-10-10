@@ -13,6 +13,7 @@ from class_table_backend.api.schemas import (
     ScheduleCourseOut,
     ScheduleOut,
     ScheduleSemesterOut,
+    SemesterUpdateIn,
 )
 from class_table_backend.auth.dependencies import require_admin
 from class_table_backend.persistence.repositories import (
@@ -107,6 +108,24 @@ def update_class(
         row.department = body.department
     session.flush()
     return _class_out(row)
+
+
+@admin_router.patch("/{class_id}/semester", response_model=ScheduleSemesterOut)
+def update_class_semester(
+    class_id: str,
+    body: SemesterUpdateIn,
+    session: SessionDep,
+) -> ScheduleSemesterOut:
+    classes = ClassRepository(session)
+    if classes.get_by_id(class_id) is None:
+        raise HTTPException(status_code=404, detail=f"班级不存在: {class_id}")
+    try:
+        meta = ScheduleRepository(session).update_start_date(
+            class_id, body.start_date
+        )
+    except ImportConfirmError as exc:
+        raise HTTPException(status_code=404, detail=exc.message) from exc
+    return ScheduleSemesterOut.model_validate(meta)
 
 
 @admin_router.delete("/{class_id}", status_code=204)
