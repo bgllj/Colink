@@ -3,7 +3,7 @@ feature: exclude-minor-courses
 status: delivered
 updated: 2026-10-10
 branch: feat/exclude-minor-courses
-commits: bced9f9..HEAD
+commits: bced9f9..c26b0a9
 ---
 
 # 自动排除辅修课程
