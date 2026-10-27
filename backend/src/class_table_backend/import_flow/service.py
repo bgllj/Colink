@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from class_table_backend.domain.issues import Issue, IssueCode
+from class_table_backend.domain.minor import is_minor_course
 from class_table_backend.domain.models import ParsedOccurrence
 from class_table_backend.domain.validation import ValidationConfig, validate_extraction
 from class_table_backend.import_flow.status import ImportStatus
@@ -108,10 +109,29 @@ def _is_batch_level(issue: Issue, occurrences: list[ParsedOccurrence]) -> bool:
     return True
 
 
-def _row_payload(occurrence: ParsedOccurrence, issues: list[Issue]) -> dict[str, Any]:
+def _row_payload(
+    occurrence: ParsedOccurrence,
+    issues: list[Issue],
+    *,
+    ignore_minor: bool = False,
+) -> dict[str, Any]:
+    row_issues = list(issues)
+    selected = 1
+    if ignore_minor and is_minor_course(occurrence.course_name):
+        selected = 0
+        row_issues.append(
+            Issue(
+                code=IssueCode.MINOR_COURSE_EXCLUDED,
+                message=f"已按「忽略辅修」自动取消勾选：{occurrence.course_name}",
+                severity="info",
+                sheet=occurrence.sheet,
+                coordinate=occurrence.coordinate,
+                line_index=occurrence.line_index,
+            )
+        )
     return {
         "row_status": _row_status_for(issues),
-        "selected": 1,
+        "selected": selected,
         "course_code": occurrence.course_code,
         "course_name": occurrence.course_name,
         "weekday": occurrence.weekday,
@@ -124,7 +144,7 @@ def _row_payload(occurrence: ParsedOccurrence, issues: list[Issue]) -> dict[str,
         "coordinate": occurrence.coordinate,
         "line_index": occurrence.line_index,
         "raw_line": occurrence.raw_line,
-        "issues_json": [_issue_to_dict(issue) for issue in issues],
+        "issues_json": [_issue_to_dict(issue) for issue in row_issues],
     }
 
 
@@ -162,6 +182,7 @@ class ImportService:
         max_week: int | None = None,
         class_id: str | None = None,
         class_name: str | None = None,
+        ignore_minor: bool = True,
     ) -> dict[str, Any]:
         file_hash = hashlib.sha256(data).hexdigest()
 
@@ -177,7 +198,7 @@ class ImportService:
                 max_week=max_week,
                 class_id=class_id,
                 class_name=class_name,
-                meta_json={"issues": [issue]},
+                meta_json={"issues": [issue], "ignore_minor": ignore_minor},
             )
             return {
                 "import_id": batch.id,
@@ -210,7 +231,7 @@ class ImportService:
                 max_week=max_week,
                 class_id=class_id,
                 class_name=class_name,
-                meta_json={"issues": [issue], "file_format": None},
+                meta_json={"issues": [issue], "file_format": None, "ignore_minor": ignore_minor},
             )
             return {
                 "import_id": batch.id,
@@ -230,7 +251,11 @@ class ImportService:
                 max_week=max_week,
                 class_id=class_id,
                 class_name=class_name,
-                meta_json={"issues": [issue], "file_format": file_format},
+                meta_json={
+                    "issues": [issue],
+                    "file_format": file_format,
+                    "ignore_minor": ignore_minor,
+                },
             )
             return {
                 "import_id": batch.id,
@@ -253,7 +278,11 @@ class ImportService:
                 max_week=max_week,
                 class_id=class_id,
                 class_name=class_name,
-                meta_json={"issues": [issue], "file_format": file_format},
+                meta_json={
+                    "issues": [issue],
+                    "file_format": file_format,
+                    "ignore_minor": ignore_minor,
+                },
             )
             return {
                 "import_id": batch.id,
@@ -277,7 +306,11 @@ class ImportService:
                 max_week=max_week,
                 class_id=class_id,
                 class_name=class_name,
-                meta_json={"issues": issues, "file_format": file_format},
+                meta_json={
+                    "issues": issues,
+                    "file_format": file_format,
+                    "ignore_minor": ignore_minor,
+                },
             )
             return {
                 "import_id": batch.id,
@@ -294,6 +327,7 @@ class ImportService:
             max_week=max_week,
             class_id=class_id,
             class_name=class_name,
+            ignore_minor=ignore_minor,
         )
 
     def _persist_extraction(
@@ -306,6 +340,7 @@ class ImportService:
         max_week: int | None,
         class_id: str | None = None,
         class_name: str | None = None,
+        ignore_minor: bool = True,
     ) -> dict[str, Any]:
         occurrences, all_issues, effective_max_week = validate_extraction(
             extraction,
@@ -315,7 +350,9 @@ class ImportService:
         rows_payload: list[dict[str, Any]] = []
         for occurrence in occurrences:
             row_issues = _issues_for_occurrence(occurrence, all_issues)
-            rows_payload.append(_row_payload(occurrence, row_issues))
+            rows_payload.append(
+                _row_payload(occurrence, row_issues, ignore_minor=ignore_minor)
+            )
 
         batch_issues = [
             _issue_to_dict(issue)
@@ -345,6 +382,7 @@ class ImportService:
                 "department": meta.department,
                 "grade": meta.grade,
                 "major": meta.major,
+                "ignore_minor": ignore_minor,
             },
         )
         self.repo.replace_rows(batch.id, rows_payload)
@@ -377,6 +415,7 @@ class ImportService:
             "class_name": batch.class_name,
             "max_week": batch.max_week,
             "issues": meta.get("issues", []),
+            "ignore_minor": meta.get("ignore_minor"),
             "rows": [_export_row(row) for row in rows],
         }
 

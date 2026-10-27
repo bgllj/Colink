@@ -42,6 +42,7 @@ output/
 
 # Local sample data (do not publish)
 samples/
+backend/tests/样例/
 
 # OS
 .DS_Store

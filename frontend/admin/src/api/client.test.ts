@@ -91,6 +91,22 @@ describe("api client requests", () => {
     expect(init.method).toBe("POST");
     expect(init.body).toBeInstanceOf(FormData);
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok-3");
+    const form = init.body as FormData;
+    expect(form.get("ignore_minor")).toBe("true");
+  });
+
+  it("posts ignore_minor=false when unchecking minor filter", async () => {
+    setToken("tok-3b");
+    const fetchMock = mockFetchOnce(200, {
+      import_id: "i1",
+      status: "PARSED",
+      issues: [],
+    });
+    const file = new File(["x"], "table.xlsx");
+    await ingestImport(file, { ignoreMinor: false });
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const form = init.body as FormData;
+    expect(form.get("ignore_minor")).toBe("false");
   });
 
   it("confirm posts row_ids and replace flag", async () => {

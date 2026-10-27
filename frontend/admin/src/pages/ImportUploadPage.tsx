@@ -8,6 +8,7 @@ export function ImportUploadPage() {
   const navigate = useNavigate();
   const [file, setFile] = useState<File | null>(null);
   const [maxWeek, setMaxWeek] = useState("");
+  const [ignoreMinor, setIgnoreMinor] = useState(true);
   const [classes, setClasses] = useState<ClassOut[]>([]);
   const [classId, setClassId] = useState("");
   const [className, setClassName] = useState("");
@@ -43,6 +44,7 @@ export function ImportUploadPage() {
         maxWeek: parsedMaxWeek,
         classId: classId || null,
         className: classId ? null : className.trim(),
+        ignoreMinor,
       });
       setResult(response);
     } catch (err) {
@@ -99,6 +101,17 @@ export function ImportUploadPage() {
               placeholder="留空则使用解析结果"
             />
           </label>
+          <label className="row" style={{ gap: "0.4rem", alignItems: "center" }}>
+            <input
+              type="checkbox"
+              checked={ignoreMinor}
+              onChange={(e) => setIgnoreMinor(e.target.checked)}
+            />
+            忽略辅修课程
+          </label>
+          <p className="muted" style={{ margin: 0 }}>
+            勾选后，课程名含「辅修」的行会自动取消勾选；仍可在逐行审核中改回。
+          </p>
           {error ? <div className="error">{error}</div> : null}
           <div className="row">
             <button className="primary" type="submit" disabled={pending || !file}>

@@ -114,7 +114,12 @@ export function fetchMe(): Promise<AdminUser> {
 
 export function ingestImport(
   file: File,
-  options?: { maxWeek?: number | null; classId?: string | null; className?: string | null },
+  options?: {
+    maxWeek?: number | null;
+    classId?: string | null;
+    className?: string | null;
+    ignoreMinor?: boolean;
+  },
 ): Promise<ImportIngestResponse> {
   const formData = new FormData();
   formData.append("file", file);
@@ -127,6 +132,7 @@ export function ingestImport(
   if (options?.className) {
     formData.append("class_name", options.className);
   }
+  formData.append("ignore_minor", String(options?.ignoreMinor ?? true));
   return request<ImportIngestResponse>("/imports", { method: "POST", formData });
 }
 

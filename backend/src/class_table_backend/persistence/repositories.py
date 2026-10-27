@@ -231,8 +231,13 @@ class ImportRepository:
             stmt = stmt.where(ImportRowRow.id.in_(row_ids))
         candidates = list(self.session.scalars(stmt))
 
+        # row_ids 显式列出 = 用户在审核页勾选的最终集合，信任该集合
+        # （即便入库时 selected=0，例如「忽略辅修」自动取消的行被改回）。
+        # row_ids 为 None（省略）表示确认全部，此时仍只收 selected=1 的可入库行。
         for row in candidates:
-            if row.row_status != ROW_STATUS_PARSED or not row.selected:
+            if row.row_status != ROW_STATUS_PARSED:
+                continue
+            if row_ids is None and not row.selected:
                 continue
             self._write_occurrence(row, class_id=target.id)
 

@@ -50,6 +50,7 @@ def _meta_from_preview(preview: dict[str, Any]) -> dict[str, Any]:
         "start_date": start_date,
         "class_id": preview.get("class_id"),
         "class_name": preview.get("class_name"),
+        "ignore_minor": preview.get("ignore_minor"),
     }
 
 
@@ -75,6 +76,7 @@ def ingest_import(
     max_week: Annotated[int | None, Form()] = None,
     class_id: Annotated[str | None, Form()] = None,
     class_name: Annotated[str | None, Form()] = None,
+    ignore_minor: Annotated[bool, Form()] = True,
 ) -> ImportIngestResponse:
     # Bound the read so an oversized upload cannot exhaust memory; the service
     # still reports FILE_TOO_LARGE for anything above the limit.
@@ -85,6 +87,7 @@ def ingest_import(
         max_week=max_week,
         class_id=class_id,
         class_name=class_name,
+        ignore_minor=ignore_minor,
     )
     return ImportIngestResponse(
         import_id=result["import_id"],

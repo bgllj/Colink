@@ -123,6 +123,73 @@ def test_unknown_import_returns_404(client: TestClient, auth_headers: dict[str, 
     assert client.post("/imports/no-such-import/confirm", headers=auth_headers).status_code == 404
 
 
+def _minor_sample_xlsx() -> bytes:
+    import io
+
+    import openpyxl
+
+    book = openpyxl.Workbook()
+    sheet = book.active
+    sheet.title = "Sheet1"
+    sheet.cell(1, 1, "成都文理学院2026-2027学年第一学期课表")
+    sheet.cell(3, 1, "大节")
+    sheet.cell(3, 2, "时段")
+    for col, day in enumerate("一二三四五六日", start=3):
+        sheet.cell(3, col, f"星期{day}")
+    sheet.cell(4, 1, "一")
+    sheet.cell(4, 2, "上午")
+    sheet.cell(
+        4,
+        3,
+        "[1001]高等数学 [1-16周][1-2节] 教A101\n"
+        "[FX3001004]财务管理Ⅰ（辅修） [1-16周][1-2节] 教C404",
+    )
+    buf = io.BytesIO()
+    book.save(buf)
+    return buf.getvalue()
+
+
+def test_upload_ignore_minor_form_field(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    payload = _minor_sample_xlsx()
+
+    xlsx_mime = (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    default = client.post(
+        "/imports",
+        files={"file": ("t.xlsx", payload, xlsx_mime)},
+        headers=auth_headers,
+    )
+    assert default.status_code == 200
+    default_rows = {
+        row["course_name"]: row
+        for row in client.get(
+            f"/imports/{default.json()['import_id']}", headers=auth_headers
+        ).json()["rows"]
+    }
+    assert default_rows["财务管理Ⅰ（辅修）"]["selected"] is False
+    assert default_rows["高等数学"]["selected"] is True
+
+    # same file hash → duplicate short-circuit; use a distinct payload to force a new batch
+    payload2 = payload + b"\x00"
+    kept = client.post(
+        "/imports",
+        files={"file": ("t2.xlsx", payload2, xlsx_mime)},
+        data={"ignore_minor": "false"},
+        headers=auth_headers,
+    )
+    assert kept.status_code == 200
+    kept_rows = {
+        row["course_name"]: row
+        for row in client.get(
+            f"/imports/{kept.json()['import_id']}", headers=auth_headers
+        ).json()["rows"]
+    }
+    assert kept_rows["财务管理Ⅰ（辅修）"]["selected"] is True
+
+
 def test_confirm_rejects_failed_batch(client: TestClient, auth_headers: dict[str, str]) -> None:
     response = _upload(client, auth_headers, data=b"not a workbook", filename="notes.txt")
     assert response.status_code == 200
