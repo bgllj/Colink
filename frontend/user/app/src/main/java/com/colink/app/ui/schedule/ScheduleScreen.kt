@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DatePicker
@@ -82,6 +83,7 @@ fun ScheduleScreen(
     maxWeek: Int = 32,
     loadState: CourseLoadState,
     onRetry: () -> Unit,
+    onImportClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var systemNow by remember { mutableStateOf(LocalDateTime.now()) }
@@ -139,11 +141,11 @@ fun ScheduleScreen(
         when (loadState) {
             is CourseLoadState.Loading -> item { LoadingScheduleCard() }
             is CourseLoadState.NoClassSelected -> item {
-                ErrorScheduleCard("请先在上方选择班级", onRetry)
+                NoConfirmedScheduleCard(onImportClick)
             }
             is CourseLoadState.Error -> item { ErrorScheduleCard(loadState.message, onRetry) }
             is CourseLoadState.Ready -> when {
-                allCourses.isNullOrEmpty() -> item { NoConfirmedScheduleCard() }
+                allCourses.isNullOrEmpty() -> item { NoConfirmedScheduleCard(onImportClick) }
                 courses.isEmpty() -> item { EmptyScheduleCard() }
                 else -> items(courses, key = { it.id }) { CourseTimelineCard(it) { selectedCourse = it } }
             }
@@ -170,10 +172,14 @@ fun ScheduleScreen(
 }
 
 private fun daySubtitle(loadState: CourseLoadState, courses: List<Course>): String = when (loadState) {
-    is CourseLoadState.Loading -> "正在从后端加载课表"
-    is CourseLoadState.NoClassSelected -> "请先选择班级"
+    is CourseLoadState.Loading -> "正在加载课表"
+    is CourseLoadState.NoClassSelected -> "请先导入课表"
     is CourseLoadState.Error -> "课表加载失败"
-    is CourseLoadState.Ready -> if (courses.isEmpty()) "为自己留一点空白" else "共 ${courses.size} 门课程"
+    is CourseLoadState.Ready -> when {
+        loadState.courses.isEmpty() -> "还没有课表，先导入一份吧"
+        courses.isEmpty() -> "为自己留一点空白"
+        else -> "共 ${courses.size} 门课程"
+    }
 }
 
 private fun periodLabel(course: Course): String {
@@ -273,7 +279,7 @@ private fun LoadingScheduleCard() {
     StatusCard(
         icon = Icons.Default.Schedule,
         title = "正在加载课表",
-        description = "正在从后端读取已确认的课表数据",
+        description = "正在读取本机课表数据",
     )
 }
 
@@ -299,11 +305,13 @@ private fun ErrorScheduleCard(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun NoConfirmedScheduleCard() {
+private fun NoConfirmedScheduleCard(onImportClick: () -> Unit) {
     StatusCard(
         icon = Icons.Default.CalendarToday,
-        title = "暂无已确认课表",
-        description = "请先在后端导入课表并确认后，再回到这里查看",
+        title = "还没有课表",
+        description = "导入学校下发的课表 Excel，离线也能看",
+        actionLabel = "导入课表",
+        onAction = onImportClick,
     )
 }
 
@@ -317,7 +325,13 @@ private fun EmptyScheduleCard() {
 }
 
 @Composable
-private fun StatusCard(icon: ImageVector, title: String, description: String) {
+private fun StatusCard(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+) {
     Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = PaperLight), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(vertical = 30.dp, horizontal = 22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Surface(shape = CircleShape, color = GreenSoft, modifier = Modifier.size(52.dp)) {
@@ -327,6 +341,10 @@ private fun StatusCard(icon: ImageVector, title: String, description: String) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(5.dp))
             Text(description, style = MaterialTheme.typography.bodyMedium, color = Moss)
+            if (actionLabel != null && onAction != null) {
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = onAction) { Text(actionLabel) }
+            }
         }
     }
 }
@@ -350,7 +368,7 @@ private fun CourseDetailSheet(course: Course, onDismiss: () -> Unit) {
             DetailRow(Icons.Default.Class, "开课周次", formatWeeks(course.weeks))
             DetailRow(Icons.Default.School, "课程代码", course.code)
             Spacer(Modifier.height(8.dp)); HorizontalDivider(color = Line); Spacer(Modifier.height(14.dp))
-            Text("课表数据来自后端，仅在本机临时缓存", style = MaterialTheme.typography.bodySmall, color = Moss)
+            Text("课表数据来自本机导入", style = MaterialTheme.typography.bodySmall, color = Moss)
         }
     }
 }

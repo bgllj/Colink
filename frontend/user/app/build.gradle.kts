@@ -4,6 +4,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 val keystoreProps = Properties().apply {
@@ -43,6 +44,23 @@ android { namespace = "com.colink.app"; compileSdk = 35
             }
         }
     }
+
+    packaging {
+        resources {
+            excludes += setOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt",
+                "META-INF/*.kotlin_module",
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+                "mozilla/public-suffix-list.txt",
+            )
+        }
+    }
 }
 dependencies {
     val bom = platform("androidx.compose:compose-bom:2024.12.01")
@@ -58,4 +76,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation("org.apache.poi:poi:5.2.5")
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+    implementation("net.sourceforge.jexcelapi:jxl:2.6.12")
+    testImplementation("junit:junit:4.13.2")
 }
